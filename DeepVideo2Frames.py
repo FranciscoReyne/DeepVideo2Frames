@@ -4,6 +4,7 @@ import numpy as np
 from datetime import datetime
 import concurrent.futures
 from pathlib import Path
+from tqdm import tqdm
 
 def video_to_frames(video_path, output_folder, frame_interval=1, output_format='jpg', compress=False, resize=None, start_time=0, end_time=None, parallel=False):
     """
@@ -39,6 +40,11 @@ def video_to_frames(video_path, output_folder, frame_interval=1, output_format='
     # Create output folder if not exists
     os.makedirs(output_folder, exist_ok=True)
 
+    valid_formats = ['jpg', 'png', 'bmp']
+    if output_format not in valid_formats:
+        print(f"Error: Unsupported format '{output_format}'")
+        return
+
     # Prepare frame extraction function
     def extract_frame(frame_idx):
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
@@ -57,6 +63,10 @@ def video_to_frames(video_path, output_folder, frame_interval=1, output_format='
             encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 50]  # 50% quality for compression
             _, frame = cv2.imencode('.jpg', frame, encode_param)
             frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+        elif compress and output_format == 'png':
+            encode_param = [int(cv2.IMWRITE_PNG_COMPRESSION), 9]  # Maximum compression for PNG
+            _, frame = cv2.imencode('.png', frame, encode_param)
+            frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
         
         # Construct file path
         timestamp = datetime.fromtimestamp(frame_idx / fps).strftime('%H-%M-%S')
@@ -64,21 +74,17 @@ def video_to_frames(video_path, output_folder, frame_interval=1, output_format='
         file_path = os.path.join(output_folder, filename)
 
         # Save the image in the desired format
-        if output_format == 'jpg':
+        try:
             cv2.imwrite(file_path, frame)
-        elif output_format == 'png':
-            cv2.imwrite(file_path, frame)
-        elif output_format == 'bmp':
-            cv2.imwrite(file_path, frame)
-        else:
-            print(f"Unsupported format: {output_format}")
+        except Exception as e:
+            print(f"Error saving frame {frame_idx}: {e}")
             return None
         
         return filename
 
     # Parallel processing for faster frame extraction
     def process_parallel():
-        with concurrent.futures.ProcessPoolExecutor() as executor:  # Use ProcessPoolExecutor for CPU-bound tasks
+        with concurrent.futures.ThreadPoolExecutor() as executor:  # For I/O bound tasks
             futures = []
             for frame_idx in range(int(start_time * fps), int(end_time * fps), frame_interval):
                 futures.append(executor.submit(extract_frame, frame_idx))
@@ -88,7 +94,7 @@ def video_to_frames(video_path, output_folder, frame_interval=1, output_format='
     # Sequential processing (fallback)
     def process_sequential():
         results = []
-        for frame_idx in range(int(start_time * fps), int(end_time * fps), frame_interval):
+        for frame_idx in tqdm(range(int(start_time * fps), int(end_time * fps), frame_interval), desc="Extracting frames"):
             result = extract_frame(frame_idx)
             if result:
                 results.append(result)
@@ -106,4 +112,3 @@ def video_to_frames(video_path, output_folder, frame_interval=1, output_format='
         print("Video capture released.")
 
     print("Frames extraction completed.")
-
