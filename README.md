@@ -1,6 +1,6 @@
 # DeepVideo2Frames
 
-**DeepVideo2Frames** is a Python library that extracts frames from videos and saves them as images. It is designed to be used in deep learning and computer vision tasks, providing various options for frame extraction, including interval selection, image resizing, and format support.
+**DeepVideo2Frames** (https://github.com/FranciscoReyne/DeepVideo2Frames/blob/main/DeepVideo2Frames.py) is a Python library that extracts frames from videos and saves them as images. It is designed to be used in deep learning and computer vision tasks, providing various options for frame extraction, including interval selection, image resizing, and format support.
 
 ---
 
